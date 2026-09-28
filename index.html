@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>эхо</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #000;
+    color: #c9c9c9;
+    font-family: 'Courier New', monospace;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Зеркало — размытое отражение */
+  .mirror {
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at center,
+      rgba(40,40,50,0.4) 0%,
+      rgba(10,10,15,0.9) 60%,
+      #000 100%);
+    opacity: 0;
+    animation: mirrorAppear 4s ease-in forwards;
+    pointer-events: none;
+  }
+
+  @keyframes mirrorAppear {
+    to { opacity: 1; }
+  }
+
+  /* Лёгкое дрожание зеркала */
+  .mirror::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(255,255,255,0.02) 0px,
+      rgba(255,255,255,0.02) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+    animation: flicker 0.15s infinite;
+  }
+
+  @keyframes flicker {
+    0% { opacity: 0.3; }
+    50% { opacity: 0.5; }
+    100% { opacity: 0.3; }
+  }
+
+  .container {
+    position: relative;
+    z-index: 2;
+    max-width: 600px;
+    padding: 30px;
+    text-align: center;
+  }
+
+  #text {
+    font-size: 18px;
+    line-height: 1.8;
+    min-height: 200px;
+    white-space: pre-wrap;
+    text-shadow: 0 0 8px rgba(180,180,200,0.3);
+  }
+
+  .cursor {
+    display: inline-block;
+    width: 10px;
+    height: 18px;
+    background: #c9c9c9;
+    animation: blink 1s infinite;
+    vertical-align: middle;
+    margin-left: 2px;
+  }
+
+  @keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0; }
+  }
+
+  /* Поле ввода */
+  #input-area {
+    margin-top: 40px;
+    opacity: 0;
+    transition: opacity 1.5s ease;
+  }
+
+  #input-area.visible {
+    opacity: 1;
+  }
+
+  #code-input {
+    background: transparent;
+    border: 1px solid #444;
+    color: #c9c9c9;
+    font-family: 'Courier New', monospace;
+    font-size: 18px;
+    padding: 12px 20px;
+    text-align: center;
+    letter-spacing: 4px;
+    outline: none;
+    width: 240px;
+    transition: border-color 0.3s;
+  }
+
+  #code-input:focus {
+    border-color: #888;
+    box-shadow: 0 0 15px rgba(150,150,180,0.2);
+  }
+
+  #hint {
+    margin-top: 20px;
+    font-size: 13px;
+    color: #666;
+    font-style: italic;
+    opacity: 0;
+    transition: opacity 1s;
+  }
+
+  #hint.visible {
+    opacity: 1;
+  }
+
+  /* Мелькающее слово */
+  .echo-word {
+    position: fixed;
+    color: rgba(200,200,220,0.15);
+    font-family: 'Courier New', monospace;
+    font-size: 22px;
+    letter-spacing: 6px;
+    pointer-events: none;
+    z-index: 1;
+    user-select: none;
+    animation: echoFade 1.2s ease-out forwards;
+  }
+
+  @keyframes echoFade {
+    0% { opacity: 0; transform: scale(0.9); }
+    30% { opacity: 0.6; }
+    100% { opacity: 0; transform: scale(1.1); }
+  }
+
+  /* Ошибка — глитч */
+  body.error {
+    animation: shake 0.3s;
+  }
+
+  @keyframes shake {
+    0%, 100% { transform: translate(0,0); }
+    25% { transform: translate(-4px, 2px); }
+    50% { transform: translate(4px, -2px); }
+    75% { transform: translate(-2px, -2px); }
+  }
+
+  #error-text {
+    margin-top: 15px;
+    color: #8b3a3a;
+    font-size: 14px;
+    font-style: italic;
+    opacity: 0;
+    transition: opacity 0.5s;
+  }
+
+  #error-text.visible {
+    opacity: 1;
+  }
+
+  /* Кнопка расследования */
+  #continue-btn {
+    display: none;
+    margin-top: 40px;
+    background: transparent;
+    border: 1px solid #666;
+    color: #c9c9c9;
+    font-family: 'Courier New', monospace;
+    font-size: 15px;
+    letter-spacing: 3px;
+    padding: 15px 35px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.4s;
+    opacity: 0;
+  }
+
+  #continue-btn.visible {
+    display: inline-block;
+    animation: btnAppear 2s forwards;
+  }
+
+  @keyframes btnAppear {
+    to { opacity: 1; }
+  }
+
+  #continue-btn:hover {
+    border-color: #c9c9c9;
+    box-shadow: 0 0 25px rgba(180,180,200,0.3);
+    letter-spacing: 5px;
+  }
+
+  .final-line {
+    margin-top: 30px;
+    font-size: 15px;
+    color: #888;
+    font-style: italic;
+    opacity: 0;
+    transition: opacity 2s;
+  }
+
+  .final-line.visible {
+    opacity: 1;
+  }
+</style>
+</head>
+<body>
+
+<div class="mirror"></div>
+
+<div class="container">
+  <div id="text"></div>
+
+  <div id="input-area">
+    <input type="text" id="code-input" placeholder="— — — —" autocomplete="off" spellcheck="false">
+    <div id="hint">что возвращается, но никогда не приходит первым?</div>
+    <div id="error-text"></div>
+  </div>
+
+  <button id="continue-btn">Продолжить расследование</button>
+  <div class="final-line" id="final-line"></div>
+</div>
+
+<script>
+  // ==== ТЕКСТ, КОТОРЫЙ ПЕЧАТАЕТСЯ ====
+  const lines = [
+    { text: "Ты меня ищешь?", pause: 1200 },
+    { text: "\n\n", pause: 600 },
+    { text: "Я знаю, что ты здесь.", pause: 1500 },
+    { text: "\n\n", pause: 800 },
+    { text: "Я знал, что ты придёшь.", pause: 2000 },
+    { text: "\n\n", pause: 1200 },
+    { text: "Введи код.", pause: 800 },
+    { text: "\n", pause: 400 },
+    { text: "Если сможешь.", pause: 0 }
+  ];
+
+  const textEl = document.getElementById('text');
+  const inputArea = document.getElementById('input-area');
+  const codeInput = document.getElementById('code-input');
+  const hintEl = document.getElementById('hint');
+  const errorText = document.getElementById('error-text');
+  const continueBtn = document.getElementById('continue-btn');
+  const finalLine = document.getElementById('final-line');
+
+  let currentLine = 0;
+  let currentChar = 0;
+  let cursorEl = document.createElement('span');
+  cursorEl.className = 'cursor';
+
+  // ==== ПЕЧАТАЮЩИЙСЯ ТЕКСТ ====
+  function typeNext() {
+    if (currentLine >= lines.length) {
+      // Текст закончен — показываем поле ввода
+      setTimeout(() => {
+        inputArea.classList.add('visible');
+        setTimeout(() => hintEl.classList.add('visible'), 1500);
+      }, 500);
+      return;
+    }
+
+    const line = lines[currentLine];
+
+    if (currentChar < line.text.length) {
+      textEl.textContent += line.text[currentChar];
+      currentChar++;
+      textEl.appendChild(cursorEl);
+      // Разная скорость для разных символов
+      const char = line.text[currentChar - 1];
+      let speed = 60;
+      if (char === '.' || char === '?' || char === '!') speed = 400;
+      if (char === ',') speed = 200;
+      setTimeout(typeNext, speed);
+    } else {
+      currentLine++;
+      currentChar = 0;
+      setTimeout(typeNext, line.pause);
+    }
+  }
+
+  // ==== МЕЛЬКАЮЩЕЕ СЛОВО «ЭХО» ====
+  function spawnEcho() {
+    const word = document.createElement('div');
+    word.className = 'echo-word';
+    word.textContent = 'ЭХО';
+    word.style.left = Math.random() * 85 + '%';
+    word.style.top = Math.random() * 85 + '%';
+    document.body.appendChild(word);
+    setTimeout(() => word.remove(), 1200);
+  }
+
+  // Обычная частота — раз в 3 секунды
+  let echoInterval = setInterval(spawnEcho, 3000);
+
+  // ==== ПРОВЕРКА КОДА ====
+  const CORRECT = 'эхо';
+
+  codeInput.addEventListener('input', () => {
+    const val = codeInput.value.trim().toLowerCase();
+    if (val === CORRECT) {
+      // Успех
+      clearInterval(echoInterval);
+      errorText.classList.remove('visible');
+      codeInput.disabled = true;
+      codeInput.style.borderColor = '#5a7a5a';
+      codeInput.style.boxShadow = '0 0 25px rgba(100,180,100,0.3)';
+
+      inputArea.style.transition = 'opacity 1s';
+      setTimeout(() => {
+        inputArea.style.opacity = '0.3';
+        continueBtn.classList.add('visible');
+        finalLine.textContent = 'дверь открыта.';
+        finalLine.classList.add('visible');
+      }, 800);
+    } else if (val.length > 0 && !CORRECT.startsWith(val)) {
+      // Ошибка — эхо искажается
+      showError();
+    }
+  });
+
+  let errorCooldown = false;
+
+  function showError() {
+    if (errorCooldown) return;
+    errorCooldown = true;
+    setTimeout(() => errorCooldown = false, 2000);
+
+    document.body.classList.add('error');
+    setTimeout(() => document.body.classList.remove('error'), 300);
+
+    errorText.textContent = 'эхо искажается...';
+    errorText.classList.add('visible');
+
+    // Ускоряем мелькание слова
+    clearInterval(echoInterval);
+    echoInterval = setInterval(spawnEcho, 400);
+
+    // Через 3 секунды возвращаем обычную частоту
+    setTimeout(() => {
+      clearInterval(echoInterval);
+      echoInterval = setInterval(spawnEcho, 3000);
+      errorText.classList.remove('visible');
+    }, 3000);
+  }
+
+  // ==== ПЕРЕХОД НА ШАГ 1 ====
+  continueBtn.addEventListener('click', () => {
+    // Плавное затухание и переход
+    document.body.style.transition = 'opacity 1.5s';
+    document.body.style.opacity = '0';
+    setTimeout(() => {
+      window.location.href = 'shag1.html';
+    }, 1500);
+  });
+
+  // ==== СТАРТ ====
+  window.addEventListener('load', () => {
+    setTimeout(typeNext, 1500);
+  });
+</script>
+</body>
+</html>
