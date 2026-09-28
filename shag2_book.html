@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>эхо — память</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    background: #000;
+    color: #c9c9c9;
+    font-family: 'Courier New', monospace;
+    min-height: 100vh;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* ============ ФОН ============ */
+  .bg-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background: radial-gradient(ellipse at 50% 50%,
+      rgba(25,20,30,0.9) 0%,
+      rgba(8,5,10,1) 60%,
+      #000 100%);
+    animation: bgBreathe 12s ease-in-out infinite;
+  }
+
+  @keyframes bgBreathe {
+    0%, 100% { opacity: 0.85; }
+    50% { opacity: 1; }
+  }
+
+  /* Шум плёнки */
+  .film-noise {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background-image:
+      repeating-linear-gradient(0deg,
+        rgba(255,255,255,0.02) 0px,
+        rgba(255,255,255,0.02) 1px,
+        transparent 1px,
+        transparent 3px);
+    opacity: 0.5;
+    animation: noiseMove 0.08s steps(2) infinite;
+  }
+
+  @keyframes noiseMove {
+    0% { transform: translate(0, 0); }
+    50% { transform: translate(1px, 1px); }
+    100% { transform: translate(0, 0); }
+  }
+
+  /* Виньетка */
+  .vignette {
+    position: fixed;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center,
+      transparent 30%,
+      rgba(0,0,0,0.7) 80%,
+      rgba(0,0,0,0.95) 100%);
+  }
+
+  /* Частицы */
+  .particle {
+    position: fixed;
+    width: 2px;
+    height: 2px;
+    background: rgba(180,160,200,0.4);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 3;
+    animation: particleFloat linear infinite;
+  }
+
+  @keyframes particleFloat {
+    0% { transform: translateY(0) translateX(0); opacity: 0; }
+    10% { opacity: 0.6; }
+    90% { opacity: 0.6; }
+    100% { transform: translateY(-100vh) translateX(30px); opacity: 0; }
+  }
+
+  /* ============ КОНТЕЙНЕР ============ */
+  .stage {
+    position: relative;
+    z-index: 5;
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 40px 25px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+  }
+
+  #text {
+    font-size: 17px;
+    line-height: 1.8;
+    white-space: pre-wrap;
+    text-shadow: 0 0 10px rgba(180,150,200,0.3);
+    min-height: 140px;
+  }
+
+  .cursor {
+    display: inline-block;
+    width: 9px;
+    height: 17px;
+    background: #c9c9c9;
+    animation: blink 1s infinite;
+    vertical-align: middle;
+    margin-left: 2px;
+  }
+
+  @keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0; }
+  }
+
+  /* ============ ЗЕРКАЛА ============ */
+  #mirrors {
+    display: none;
+    margin-top: 40px;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+
+  #mirrors.visible {
+    display: flex;
+    animation: fadeIn 2s forwards;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .mirror-choice {
+    width: 110px;
+    height: 160px;
+    border-radius: 50% / 45%;
+    background: radial-gradient(ellipse at center,
+      rgba(50,45,60,0.7) 0%,
+      rgba(15,12,20,0.95) 60%,
+      #000 100%);
+    border: 1px solid rgba(120,110,140,0.3);
+    box-shadow:
+      0 0 30px rgba(80,70,120,0.2),
+      inset 0 0 30px rgba(0,0,0,0.9);
+    cursor: pointer;
+    position: relative;
+    transition: all 0.4s;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 15px;
+    font-size: 12px;
+    letter-spacing: 2px;
+    color: rgba(180,170,200,0.5);
+  }
+
+  .mirror-choice:hover {
+    border-color: rgba(200,180,220,0.6);
+    box-shadow: 0 0 40px rgba(150,120,200,0.4);
+    transform: translateY(-4px);
+  }
+
+  .mirror-choice.opened {
+    border-color: #5a7a5a;
+    opacity: 0.5;
+    pointer-events: none;
+  }
+
+  /* Силуэт внутри зеркала */
+  .mirror-choice::after {
+    content: '';
+    position: absolute;
+    bottom: 20%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 50px;
+    height: 100px;
+    background: radial-gradient(ellipse at center bottom,
+      rgba(30,20,40,0.9) 0%,
+      transparent 80%);
+    border-radius: 50% 50% 20% 20%;
+    filter: blur(4px);
+    opacity: 0.6;
+  }
+
+  .mirror-choice.opened::after {
+    opacity: 0;
+  }
+
+  /* ============ ТЕКСТ ВЕТКИ ============ */
+  #branch-text {
+    display: none;
+    margin-top: 35px;
+    padding: 25px;
+    border-left: 2px solid rgba(140,100,140,0.5);
+    text-align: left;
+    font-size: 15px;
+    line-height: 1.9;
+    color: #b0a0b0;
+    font-style: italic;
+    white-space: pre-wrap;
+    animation: fadeIn 1.5s forwards;
+  }
+
+  #branch-text.visible {
+    display: block;
+  }
+
+  /* ============ КНОПКА ДАЛЬШЕ ============ */
+  #continue-btn {
+    display: none;
+    margin: 40px auto 0;
+    background: transparent;
+    border: 1px solid #666;
+    color: #c9c9c9;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    letter-spacing: 3px;
+    padding: 15px 35px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.4s;
+  }
+
+  #continue-btn.visible {
+    display: block;
+    animation: fadeIn 2s forwards;
+  }
+
+  #continue-btn:hover {
+    border-color: #c9c9c9;
+    box-shadow: 0 0 25px rgba(180,180,200,0.3);
+    letter-spacing: 5px;
+  }
+
+  /* ============ КНОПКА ЗВУКА ============ */
+  #sound-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: transparent;
+    border: 1px solid #444;
+    color: #888;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    padding: 8px 14px;
+    cursor: pointer;
+    letter-spacing: 2px;
+    z-index: 20;
+    transition: all 0.3s;
+  }
+
+  #sound-btn.on {
+    border-color: #5a7a5a;
+    color: #7a9a7a;
+  }
+
+  /* ============ СКРИМЕР ============ */
+  .jumpscare {
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+    pointer-events: none;
+  }
+
+  .jumpscare.active {
+    display: flex;
+    animation: scareFlash 0.15s;
+  }
+
+  @keyframes scareFlash {
+    0% { background: #fff; }
+    30% { background: #500; }
+    100% { background: #000; }
+  }
+
+  /* Лицо из CSS */
+  .scare-face {
+    position: relative;
+    width: 300px;
+    height: 400px;
+    animation: faceShake 0.1s infinite;
+  }
+
+  @keyframes faceShake {
+    0% { transform: translate(0,0) scale(1); }
+    50% { transform: translate(-5px,3px) scale(1.05); }
+    100% { transform: translate(5px,-3px) scale(1.02); }
+  }
+
+  .face-head {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center,
+      #2a1a1a 0%,
+      #0a0505 70%,
+      #000 100%);
+    border-radius: 50% 50% 45% 45%;
+    box-shadow: inset 0 0 60px rgba(255,0,0,0.3);
+  }
+
+  .face-eye {
+    position: absolute;
+    top: 35%;
+    width: 60px;
+    height: 40px;
+    background: #fff;
+    border-radius: 50%;
+    box-shadow:
+      0 0 30px rgba(255,255,255,0.9),
+      inset 0 0 15px rgba(200,0,0,0.8);
+  }
+
+  .face-eye.left { left: 25%; }
+  .face-eye.right { right: 25%; }
+
+  .face-eye::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 18px;
+    height: 18px;
+    background: #000;
+    border-radius: 50%;
+    box-shadow: 0 0 5px #800;
+  }
+
+  .face-mouth {
+    position: absolute;
+    bottom: 22%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90px;
+    height: 120px;
+    background: #000;
+    border-radius: 40% 40% 50% 50%;
+    box-shadow:
+      inset 0 0 20px #500,
+      0 0 30px rgba(150,0,0,0.5);
+  }
+
+  .face-mouth::before,
+  .face-mouth::after {
+    content: '';
+    position: absolute;
+    width: 8px;
+    height: 30px;
+    background: #ddd;
+    top: 5px;
+  }
+  .face-mouth::before { left: 20%; }
+  .face-mouth::after { right: 20%; }
+
+  /* Кровавые потёки */
+  .blood {
+    position: absolute;
+    top: 30%;
+    width: 4px;
+    background: linear-gradient(180deg, #800 0%, #500 100%);
+    border-radius: 0 0 50% 50%;
+    animation: bloodDrip 3s ease-in infinite;
+  }
+
+  @keyframes bloodDrip {
+    0% { height: 0; opacity: 0; }
+    20% { opacity: 1; }
+    100% { height: 200px; opacity: 0.9; }
+  }
+
+  /* ============ ТРЯСКА ============ */
+  body.shake { animation: shake 0.4s; }
+
+  @keyframes shake {
+    0%, 100% { transform: translate(0,0); }
+    20% { transform: translate(-6px, 3px); }
+    40% { transform: translate(6px, -3px); }
+    60% { transform: translate(-4px, -3px); }
+    80% { transform: translate(4px, 3px); }
+  }
+
+  /* ============ ПРОБЕГАЮЩАЯ ТЕНЬ ============ */
+  .passing-shadow {
+    position: fixed;
+    top: 0;
+    left: -300px;
+    width: 300px;
+    height: 100vh;
+    background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(0,0,0,0.85) 50%,
+      transparent 100%);
+    z-index: 8;
+    pointer-events: none;
+    opacity: 0;
+  }
+
+  .passing-shadow.run {
+    animation: shadowRun 2s ease-in-out forwards;
+  }
+
+  @keyframes shadowRun {
+    0% { left: -300px; opacity: 0; }
+    20% { opacity: 0.7; }
+    80% { opacity: 0.7; }
+    100% { left: 100vw; opacity: 0; }
+  }
+
+  /* ============ ВОЛНА ОТ КЛИКА ============ */
+  .click-wave {
+    position: fixed;
+    border: 2px solid rgba(180,150,200,0.6);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 7;
+    animation: waveExpand 1s ease-out forwards;
+  }
+
+  @keyframes waveExpand {
+    0% { width: 0; height: 0; opacity: 1; margin-left: 0; margin-top: 0; }
+    100% { width: 200px; height: 200px; opacity: 0; margin-left: -100px; margin-top: -100px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-layer"></div>
+<div class="film-noise"></div>
+<div class="vignette"></div>
+<div class="passing-shadow" id="passingShadow"></div>
+
+<div class="stage">
+  <div id="text"></div>
+
+  <div id="mirrors">
+    <div class="mirror-choice" data-branch="A">ЗЕРКАЛО I</div>
+    <div class="mirror-choice" data-branch="B">ЗЕРКАЛО II</div>
+    <div class="mirror-choice" data-branch="C">ЗЕРКАЛО III</div>
+  </div>
+
+  <div id="branch-text"></div>
+
+  <button id="continue-btn">Идти глубже</button>
+</div>
+
+<button id="sound-btn">ЗВУК ВКЛ</button>
+
+<div class="jumpscare" id="jumpscare">
+  <div class="scare-face">
+    <div class="face-head"></div>
+    <div class="face-eye left"></div>
+    <div class="face-eye right"></div>
+    <div class="face-mouth"></div>
+    <div class="blood" style="left: 30%;"></div>
+    <div class="blood" style="left: 50%;"></div>
+    <div class="blood" style="left: 70%;"></div>
+  </div>
+</div>
+
+<script>
+  // ============ ЗВУКИ ============
+  const SOUNDS = {
+    hum1: 'hum1.mp3',
+    hum2: 'hum2.mp3',
+    music: 'music.mp3',
+    click1: 'click1.mp3',
+    click2: 'click2.mp3',
+    whisper1: 'whisper1.mp3',
+    whisper2: 'whisper2.mp3',
+    whisper3: 'whisper3.mp3',
+    noise1: 'noise1.mp3',
+    noise2: 'noise2.mp3',
+    noise3: 'noise3.mp3',
+    scream1: 'scream1.mp3',
+    scream2: 'scream2.mp3'
+  };
+
+  const audioCache = {};
+  Object.keys(SOUNDS).forEach(k => {
+    audioCache[k] = new Audio(SOUNDS[k]);
+  });
+
+  audioCache.hum1.loop = true;
+  audioCache.hum1.volume = 0.15;
+  audioCache.hum2.loop = true;
+  audioCache.hum2.volume = 0.1;
+  audioCache.music.loop = true;
+  audioCache.music.volume = 0.18;
+  audioCache.click1.volume = 0.25;
+  audioCache.click2.volume = 0.25;
+  audioCache.whisper1.volume = 0.5;
+  audioCache.whisper2.volume = 0.5;
+  audioCache.whisper3.volume = 0.5;
+  audioCache.noise1.volume = 0.35;
+  audioCache.noise2.volume = 0.35;
+  audioCache.noise3.volume = 0.35;
+  audioCache.scream1.volume = 0.5;
+  audioCache.scream2.volume = 0.5;
+
+  let soundOn = false;
+  const soundBtn = document.getElementById('sound-btn');
+
+  soundBtn.addEventListener('click', () => {
+    soundOn = !soundOn;
+    if (soundOn) {
+      audioCache.hum1.play().catch(()=>{});
+      audioCache.hum2.play().catch(()=>{});
+      audioCache.music.play().catch(()=>{});
+      soundBtn.textContent = 'ЗВУК ВЫКЛ';
+      soundBtn.classList.add('on');
+    } else {
+      audioCache.hum1.pause();
+      audioCache.hum2.pause();
+      audioCache.music.pause();
+      soundBtn.textContent = 'ЗВУК ВКЛ';
+      soundBtn.classList.remove('on');
+    }
+  });
+
+  function playRandom(arr) {
+    if (!soundOn) return;
+    const key = arr[Math.floor(Math.random() * arr.length)];
+    audioCache[key].currentTime = 0;
+    audioCache[key].play().catch(()=>{});
+  }
+
+  function play(name) {
+    if (!soundOn) return;
+    audioCache[name].currentTime = 0;
+    audioCache[name].play().catch(()=>{});
+  }
+
+  // ============ ВСТУПЛЕНИЕ ============
+  const intro = [
+    { text: "Ты открыла книгу.", pause: 1500 },
+    { text: "\n\n", pause: 700 },
+    { text: "И комната изменилась.", pause: 1800 },
+    { text: "\n\n", pause: 700 },
+    { text: "Теперь вокруг — зеркала.", pause: 1800 },
+    { text: "\n\n", pause: 700 },
+    { text: "Три. Только три.", pause: 1500 },
+    { text: "\n\n", pause: 1000 },
+    { text: "«В каждом — часть тебя.»", pause: 1300 },
+    { text: "\n", pause: 500 },
+    { text: "«Выбери одну. И увидишь.»", pause: 1500 },
+    { text: "\n\n", pause: 1000 },
+    { text: "Куда ты посмотришь?", pause: 0 }
+  ];
+
+  const branches = {
+    A: "Ты смотришь в первое зеркало.\n\nВ нём — ты. Но младше. Лет на десять.\n\nОна смотрит на тебя и улыбается.\n\n«Помнишь? Это было до того, как всё началось.»",
+    B: "Ты смотришь во второе зеркало.\n\nВ нём — ты. Но старше. С уставшими глазами.\n\nОна качает головой и говорит:\n\n«Не ходи туда. Пожалуйста.»",
+    C: "Ты смотришь в третье зеркало.\n\nВ нём — пустота. Только темнота.\n\nИ вдруг — оттуда на тебя смотрит кто-то.\n\nНе ты. Кто-то другой."
+  };
+
+  const textEl = document.getElementById('text');
+  const mirrorsEl = document.getElementById('mirrors');
+  const branchTextEl = document.getElementById('branch-text');
+  const continueBtn = document.getElementById('continue-btn');
+  const passingShadow = document.getElementById('passingShadow');
+
+  let currentLine = 0;
+  let currentChar = 0;
+  const cursorEl = document.createElement('span');
+  cursorEl.className = 'cursor';
+
+  function typeNext() {
+    if (currentLine >= intro.length) {
+      setTimeout(() => mirrorsEl.classList.add('visible'), 800);
+      startAtmosphere();
+      startJumpscares();
+      return;
+    }
+
+    const line = intro[currentLine];
+    if (currentChar < line.text.length) {
+      textEl.textContent += line.text[currentChar];
+      currentChar++;
+      textEl.appendChild(cursorEl);
+
+      const ch = line.text[currentChar - 1];
+      let speed = 55;
+      if (ch === '.' || ch === '?' || ch === '!') speed = 400;
+      if (ch === ',') speed = 200;
+      if (ch === '«' || ch === '»') speed = 250;
+
+      if (Math.random() < 0.25) playRandom(['click1','click2']);
+      setTimeout(typeNext, speed);
+    } else {
+      currentLine++;
+      currentChar = 0;
+      setTimeout(typeNext, line.pause);
+    }
+  }
+
+  // ============ ЧАСТИЦЫ ============
+  function spawnParticle() {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.left = Math.random() * 100 + '%';
+    p.style.bottom = '-10px';
+    p.style.animationDuration = (8 + Math.random() * 10) + 's';
+    p.style.opacity = 0.3 + Math.random() * 0.5;
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 20000);
+  }
+
+  setInterval(spawnParticle, 600);
+
+  // ============ АТМОСФЕРА ============
+  function runShadow() {
+    passingShadow.classList.add('run');
+    setTimeout(() => passingShadow.classList.remove('run'), 2000);
+    playRandom(['whisper1','whisper2','whisper3']);
+  }
+
+  function clickWave(x, y) {
+    const w = document.createElement('div');
+    w.className = 'click-wave';
+    w.style.left = x + 'px';
+    w.style.top = y + 'px';
+    document.body.appendChild(w);
+    setTimeout(() => w.remove(), 1000);
+  }
+
+  function startAtmosphere() {
+    setInterval(() => {
+      if (Math.random() < 0.5) runShadow();
+    }, 12000);
+  }
+
+  // ============ СКРИМЕРЫ ============
+  const jumpscare = document.getElementById('jumpscare');
+  let scareCount = 0;
+  const MAX_SCARES = 2;
+
+  function doJumpscare() {
+    if (scareCount >= MAX_SCARES) return;
+    scareCount++;
+
+    // Резкий звук
+    play(Math.random() < 0.5 ? 'scream1' : 'scream2');
+
+    // Показать лицо
+    jumpscare.classList.add('active');
+    document.body.classList.add('shake');
+
+    // Убрать через 1.2 сек
+    setTimeout(() => {
+      jumpscare.classList.remove('active');
+      document.body.classList.remove('shake');
+    }, 1200);
+  }
+
+  function startJumpscares() {
+    // Первый — через 25–40 сек
+    setTimeout(() => {
+      doJumpscare();
+      // Второй — через 30–50 сек после первого
+      setTimeout(doJumpscare, 30000 + Math.random() * 20000);
+    }, 25000 + Math.random() * 15000);
+  }
+
+  // ============ ВЫБОР ЗЕРКАЛА ============
+  let selectedBranch = null;
+
+  document.querySelectorAll('.mirror-choice').forEach(m => {
+    m.addEventListener('click', (e) => {
+      if (selectedBranch) return;
+      selectedBranch = m.dataset.branch;
+
+      // Волна от клика
+      clickWave(e.clientX, e.clientY);
+
+      // Звук
+      playRandom(['whisper1','whisper2','whisper3']);
+      setTimeout(() => playRandom(['noise1','noise2','noise3']), 400);
+
+      m.classList.add('opened');
+      document.querySelectorAll('.mirror-choice').forEach(o => {
+        if (o !== m) o.classList.add('opened');
+      });
+
+      branchTextEl.textContent = branches[selectedBranch];
+      branchTextEl.classList.add('visible');
+
+      setTimeout(() => {
+        continueBtn.classList.add('visible');
+      }, 2000);
+    });
+  });
+
+  // ============ ПЕРЕХОД НА ШАГ 3 ============
+  continueBtn.addEventListener('click', () => {
+    play('noise1');
+    document.body.style.transition = 'opacity 1.5s';
+    document.body.style.opacity = '0';
+    setTimeout(() => {
+      window.location.href = `shag3.html?from=book&branch=${selectedBranch}`;
+    }, 1500);
+  });
+
+  // ============ СТАРТ ============
+  window.addEventListener('load', () => {
+    setTimeout(typeNext, 1200);
+  });
+
+  // Запрет контекстного меню (для атмосферы)
+  document.addEventListener('contextmenu', e => e.preventDefault());
+</script>
+</body>
+</html>
