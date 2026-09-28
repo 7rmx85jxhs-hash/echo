@@ -646,7 +646,7 @@
     document.body.style.opacity = '0';
     setTimeout(() => {
       const path = [...opened][0] || 'unknown';
-      window.location.href = `shag2.html?path=${path}`;
+      window.location.href = `shag2_${path}.html`;
     }, 1500);
   });
 
