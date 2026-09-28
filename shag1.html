@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>эхо — 2</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #000;
+    color: #c9c9c9;
+    font-family: 'Courier New', monospace;
+    min-height: 100vh;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Лёгкая тряска */
+  body.shake { animation: shake 0.4s; }
+
+  @keyframes shake {
+    0%, 100% { transform: translate(0,0); }
+    20% { transform: translate(-3px, 2px); }
+    40% { transform: translate(3px, -2px); }
+    60% { transform: translate(-2px, -2px); }
+    80% { transform: translate(2px, 2px); }
+  }
+
+  /* Фоновый гул — визуальный */
+  .noise {
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at 50% 40%, rgba(30,30,45,0.5) 0%, rgba(5,5,10,1) 70%);
+    z-index: 0;
+  }
+
+  .noise::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(255,255,255,0.015) 0px,
+      rgba(255,255,255,0.015) 1px,
+      transparent 1px,
+      transparent 4px
+    );
+    animation: flicker 0.2s infinite;
+  }
+
+  @keyframes flicker {
+    0% { opacity: 0.4; }
+    50% { opacity: 0.6; }
+    100% { opacity: 0.4; }
+  }
+
+  /* Пробегающая тень */
+  .passing-shadow {
+    position: fixed;
+    top: 0;
+    left: -300px;
+    width: 300px;
+    height: 100vh;
+    background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(0,0,0,0.7) 50%,
+      transparent 100%);
+    z-index: 5;
+    pointer-events: none;
+    opacity: 0;
+  }
+
+  .passing-shadow.run {
+    animation: shadowRun 2s ease-in-out forwards;
+  }
+
+  @keyframes shadowRun {
+    0% { left: -300px; opacity: 0; }
+    20% { opacity: 0.6; }
+    80% { opacity: 0.6; }
+    100% { left: 100vw; opacity: 0; }
+  }
+
+  /* Зеркало */
+  .mirror {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 260px;
+    height: 380px;
+    border-radius: 50% / 45%;
+    background: radial-gradient(ellipse at center,
+      rgba(60,60,80,0.5) 0%,
+      rgba(20,20,30,0.9) 50%,
+      rgba(0,0,0,1) 90%);
+    border: 1px solid rgba(120,120,140,0.2);
+    box-shadow:
+      0 0 60px rgba(80,80,120,0.15),
+      inset 0 0 60px rgba(0,0,0,0.9);
+    z-index: 1;
+    opacity: 0;
+    animation: mirrorAppear 5s ease-in forwards;
+  }
+
+  @keyframes mirrorAppear {
+    to { opacity: 1; }
+  }
+
+  /* Силуэт в зеркале */
+  .silhouette {
+    position: absolute;
+    bottom: 15%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80px;
+    height: 200px;
+    background: radial-gradient(ellipse at center bottom,
+      rgba(20,20,30,0.9) 0%,
+      rgba(10,10,15,0.5) 60%,
+      transparent 100%);
+    border-radius: 50% 50% 20% 20%;
+    filter: blur(4px);
+    animation: breathe 6s ease-in-out infinite;
+  }
+
+  @keyframes breathe {
+    0%, 100% { opacity: 0.4; transform: translateX(-50%) scale(1); }
+    50% { opacity: 0.7; transform: translateX(-50%) scale(1.03); }
+  }
+
+  /* Глаза в зеркале */
+  .mirror-eyes {
+    position: absolute;
+    top: 42%;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 30px;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .mirror-eyes.flash {
+    animation: eyesFlash 0.8s forwards;
+  }
+
+  @keyframes eyesFlash {
+    0% { opacity: 0; }
+    30% { opacity: 0.8; }
+    100% { opacity: 0; }
+  }
+
+  .eye {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(200,180,150,0.9);
+    box-shadow: 0 0 15px rgba(200,180,150,0.8);
+  }
+
+  /* Мелькающий символ */
+  .flash-symbol {
+    position: fixed;
+    color: rgba(200,200,220,0.25);
+    font-family: 'Courier New', monospace;
+    font-size: 26px;
+    pointer-events: none;
+    z-index: 4;
+    user-select: none;
+    animation: symbolFlash 0.4s ease-out forwards;
+  }
+
+  @keyframes symbolFlash {
+    0% { opacity: 0; transform: scale(0.8); }
+    40% { opacity: 0.7; }
+    100% { opacity: 0; transform: scale(1.2); }
+  }
+
+  /* Фигура в углу */
+  .corner-figure {
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    width: 200px;
+    height: 300px;
+    background: radial-gradient(ellipse at bottom right,
+      rgba(10,10,15,0.9) 0%,
+      rgba(5,5,10,0.6) 50%,
+      transparent 80%);
+    border-radius: 50% 0 0 0;
+    filter: blur(6px);
+    opacity: 0;
+    z-index: 2;
+    pointer-events: none;
+    transition: opacity 1.5s;
+  }
+
+  .corner-figure.appear {
+    opacity: 0.7;
+  }
+
+  /* Контейнер текста */
+  .container {
+    position: relative;
+    z-index: 3;
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 40px 25px;
+    text-align: center;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  #text {
+    font-size: 17px;
+    line-height: 1.8;
+    white-space: pre-wrap;
+    text-shadow: 0 0 8px rgba(180,180,200,0.3);
+    min-height: 120px;
+  }
+
+  .cursor {
+    display: inline-block;
+    width: 9px;
+    height: 17px;
+    background: #c9c9c9;
+    animation: blink 1s infinite;
+    vertical-align: middle;
+    margin-left: 2px;
+  }
+
+  @keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0; }
+  }
+
+  /* Предметы */
+  #items {
+    display: none;
+    margin-top: 50px;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 25px;
+  }
+
+  #items.visible {
+    display: flex;
+    animation: fadeIn 2s forwards;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .item {
+    width: 70px;
+    height: 70px;
+    border: 1px solid #444;
+    background: rgba(20,20,30,0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    cursor: pointer;
+    transition: all 0.4s;
+    user-select: none;
+    position: relative;
+  }
+
+  .item:hover {
+    border-color: #aaa;
+    box-shadow: 0 0 25px rgba(150,150,200,0.3);
+    transform: translateY(-3px);
+  }
+
+  .item.opened {
+    border-color: #5a7a5a;
+    box-shadow: 0 0 20px rgba(100,180,100,0.3);
+    opacity: 0.5;
+  }
+
+  .item.opened::after {
+    content: '✓';
+    position: absolute;
+    top: 2px;
+    right: 4px;
+    font-size: 11px;
+    color: #7a9a7a;
+  }
+
+  #item-text {
+    display: none;
+    margin-top: 40px;
+    padding: 25px;
+    border-left: 2px solid #555;
+    text-align: left;
+    font-size: 15px;
+    line-height: 1.9;
+    color: #aaa;
+    font-style: italic;
+    white-space: pre-wrap;
+    animation: fadeIn 1.5s forwards;
+  }
+
+  #item-text.visible {
+    display: block;
+  }
+
+  #continue-btn {
+    display: none;
+    margin: 50px auto 0;
+    background: transparent;
+    border: 1px solid #666;
+    color: #c9c9c9;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    letter-spacing: 3px;
+    padding: 15px 35px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.4s;
+  }
+
+  #continue-btn.visible {
+    display: block;
+    animation: fadeIn 2s forwards;
+  }
+
+  #continue-btn:hover {
+    border-color: #c9c9c9;
+    box-shadow: 0 0 25px rgba(180,180,200,0.3);
+    letter-spacing: 5px;
+  }
+
+  #sound-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: transparent;
+    border: 1px solid #444;
+    color: #888;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    padding: 8px 14px;
+    cursor: pointer;
+    letter-spacing: 2px;
+    z-index: 10;
+    transition: all 0.3s;
+  }
+
+  #sound-btn:hover {
+    border-color: #888;
+    color: #ccc;
+  }
+
+  #sound-btn.on {
+    border-color: #5a7a5a;
+    color: #7a9a7a;
+  }
+</style>
+</head>
+<body>
+
+<div class="noise"></div>
+<div class="passing-shadow" id="passingShadow"></div>
+<div class="corner-figure" id="cornerFigure"></div>
+
+<div class="mirror">
+  <div class="silhouette"></div>
+  <div class="mirror-eyes" id="mirrorEyes">
+    <div class="eye"></div>
+    <div class="eye"></div>
+  </div>
+</div>
+
+<div class="container">
+  <div id="text"></div>
+
+  <div id="items">
+    <div class="item" data-path="book">📖</div>
+    <div class="item" data-path="key">🔑</div>
+    <div class="item" data-path="letter">✉️</div>
+    <div class="item" data-path="candle">🕯</div>
+    <div class="item" data-path="clock">⏳</div>
+  </div>
+
+  <div id="item-text"></div>
+
+  <button id="continue-btn">Продолжить расследование</button>
+</div>
+
+<button id="sound-btn">ЗВУК ВЫКЛ</button>
+
+<script>
+  // ============ ЗВУК ============
+  // Если звуки не работают — скачай 4 mp3 (hum, click, whisper, noise)
+  // с pixabay.com/sound-effects, залей в репозиторий и замени ссылки на имена файлов.
+  const SOUNDS = {
+    hum: 'https://cdn.pix обabay.com/audio/2022/03/15/audio_c8c8a73467.mp3',
+    click: 'https://cdn.pixabay.com/audio/2022/03/10/audio_4c4c4c4c4c.mp3',
+   рывок пись whisper:ма 'https://cdn.pixabay.com/audio/2022.\/03/15/audio_2b2b2b2b2b.mp3',
+    noise: 'https://cdn.pixabay.com/audio/2022/03/15/audio_1a1a1a1a1a.mp3'
+  };
+
+  const audio = {
+    hum: new Audio(SOUNDS.hum),
+    click: new Audio(SOUNDS.click),
+    whisper: new Audio(SOUNDS.whisper),
+    noise: new Audio(SOUNDS.noise)
+  };
+
+  audio.hum.loop = true;
+  audio.hum.volume = 0.12;
+  audio.click.volume = 0.15;
+  audio.whisper.volume = 0.35;
+  audio.noise.volume = 0.25;
+
+  let soundOn = false;
+  const soundBtn = document.getElementById('sound-btn');
+
+  soundBtn.addEventListener('click', () => {
+    soundOn = !soundOn;
+    if (soundOn) {
+      audio.hum.play().catch(() => {});
+      soundBtn.textContent = 'ЗВУК ВКЛ';
+      soundBtn.classList.add('on');
+    } else {
+      audio.hum.pause();
+      soundBtn.textContent = 'ЗВУК ВЫКЛ';
+      soundBtn.classList.remove('on');
+    }
+  });
+
+  function playSound(name) {
+    if (!soundOn) return;
+    audio[name].currentTime = 0;
+    audio[name].play().catch(() => {});
+  }
+
+  // ============ ТЕКСТ ============
+  const introLines = [
+    { text: "Ты сделала шаг.", pause: 1500 },
+    { text: "\n\n", pause: 800 },
+    { text: "Комната. Тёмная. Но ты её знаешь.", pause: 1800 },
+    { text: "\n\n", pause: 600 },
+    { text: "Зеркало. В нём — кто-то.", pause: 1800 },
+    { text: "\n\n", pause: 600 },
+    { text: "Не ты.", pause: 1500 },
+    { text: "\n\n", pause: 1000 },
+    { text: "«Ты нашла меня.»", pause: 1200 },
+    { text: "\n", pause: 500 },
+    { text: "«Теперь найди себя.»", pause: 1500 },
+    { text: "\n\n", pause: 1000 },
+    { text: "Перед тобой пять предметов. Возьми один.", pause: 0 }
+  ];
+
+  const itemTexts = {
+    book: "Ты открываешь книгу. Страницы пустые.\n\nНо на последней — одна фраза, написанная от руки:\n\n«Я ждал тебя дольше, чем ты думаешь.»",
+    key: "Ключ холодный. Ты сжимаешь его в ладони.\n\nНа бирке выцарапано:\n\n«Это не ключ от двери. Это ключ от памяти.»",
+    letter: "Конверт без адреса. Внутри —n\n«...я не мог сказать это вслух, поэтому оставил здесь...»\n\nДальше — оборвано.",
+    candle: "Свеча не горит. Но ты всё равно тянешься к ней.\n\nИ она зажигается сама.\n\n«Свет не спасёт. Но ты всё равно зажгла.»",
+    clock: "Часы стоят. Стрелки не двигаются.\n\nНо ты слышишь тиканье.\n\n«Время идёт в обе стороны. Эхо — это прошлое, которое возвращается.»"
+  };
+
+  const textEl = document.getElementById('text');
+  const itemsEl = document.getElementById('items');
+  const itemTextEl = document.getElementById('item-text');
+  const continueBtn = document.getElementById('continue-btn');
+  const passingShadow = document.getElementById('passingShadow');
+  const mirrorEyes = document.getElementById('mirrorEyes');
+  const cornerFigure = document.getElementById('cornerFigure');
+
+  let currentLine = 0;
+  let currentChar = 0;
+  const cursorEl = document.createElement('span');
+  cursorEl.className = 'cursor';
+
+  function typeNext() {
+    if (currentLine >= introLines.length) {
+      setTimeout(() => {
+        itemsEl.classList.add('visible');
+        startAtmosphere();
+      }, 700);
+      return;
+    }
+
+    const line = introLines[currentLine];
+
+    if (currentChar < line.text.length) {
+      textEl.textContent += line.text[currentChar];
+      currentChar++;
+      textEl.appendChild(cursorEl);
+
+      const ch = line.text[currentChar - 1];
+      let speed = 55;
+      if (ch === '.' || ch === '?' || ch === '!') speed = 400;
+      if (ch === ',') speed = 200;
+      if (ch === '«' || ch === '»') speed = 250;
+
+      if (Math.random() < 0.3) playSound('click');
+
+      setTimeout(typeNext, speed);
+    } else {
+      currentLine++;
+      currentChar = 0;
+      setTimeout(typeNext, line.pause);
+    }
+  }
+
+  // ============ АТМОСФЕРА ============
+  const symbols = ['▌', '▓', '░', 'Э', 'Х', 'О', '○', '◊', '⋯', '╳', ':', '•'];
+
+  function spawnFlashSymbol() {
+    const s = document.createElement('div');
+    s.className = 'flash-symbol';
+    s.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+    s.style.left = Math.random() * 85 + '%';
+    s.style.top = Math.random() * 85 + '%';
+    document.body.appendChild(s);
+    setTimeout(() => s.remove(), 400);
+  }
+
+  function runShadow() {
+    passingShadow.classList.add('run');
+    setTimeout(() => passingShadow.classList.remove('run'), 2000);
+    if (Math.random() < 0.5) playSound('whisper');
+  }
+
+  function flashEyes() {
+    mirrorEyes.classList.add('flash');
+    setTimeout(() => mirrorEyes.classList.remove('flash'), 800);
+    if (Math.random() < 0.6) playSound('whisper');
+  }
+
+  function shakeScreen() {
+    document.body.classList.add('shake');
+    setTimeout(() => document.body.classList.remove('shake'), 400);
+  }
+
+  function startAtmosphere() {
+    // Пробегающая тень — каждые 10–18 сек
+    setInterval(() => {
+      if (Math.random() < 0.6) runShadow();
+    }, 10000);
+
+    // Глаза в зеркале — каждые 12–20 сек
+    setInterval(() => {
+      if (Math.random() < 0.5) flashEyes();
+    }, 12000);
+
+    // Мелькающие символы — каждые 3–7 сек
+    setInterval(() => {
+      if (Math.random() < 0.7) spawnFlashSymbol();
+    }, 4000);
+
+    // Лёгкая дрожь — редко, каждые 20–35 сек
+    setInterval(() => {
+      if (Math.random() < 0.4) shakeScreen();
+    }, 20000);
+  }
+
+  // ============ РЕАКЦИЯ НА БЕЗДЕЙСТВИЕ ============
+  let idleTimer;
+  let idleCount = 0;
+
+  function resetIdle() {
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(onIdle, 15000);
+  }
+
+  function onIdle() {
+    idleCount++;
+    playSound('whisper');
+    if (idleCount === 1) {
+      textEl.textContent = 'Ты ещё здесь?';
+    } else if (idleCount === 2) {
+      textEl.textContent = 'Не уходи.';
+    } else {
+      textEl.textContent = 'Я жду.';
+    }
+    textEl.appendChild(cursorEl);
+  }
+
+  ['click', 'touchstart', 'keydown'].forEach(ev => {
+    document.addEventListener(ev, () => {
+      resetIdle();
+      if (idleCount > 0) {
+        idleCount = 0;
+        // Возвращаем финальную фразу
+        textEl.textContent = 'Перед тобой пять предметов. Возьми один.';
+        textEl.appendChild(cursorEl);
+      }
+    });
+  });
+
+  // ============ ИЗМЕНЕНИЕ ТЕКСТА ============
+  // Через 60 сек после старта текст меняется (если она не открыла предмет)
+  setTimeout(() => {
+    if (opened.size === 0) {
+      textEl.textContent = textEl.textContent.replace('Ты нашла меня', 'Я нашёл тебя');
+    }
+  }, 60000);
+
+  // ============ КЛИКИ ПО ПРЕДМЕТАМ ============
+  let opened = new Set();
+
+  document.querySelectorAll('.item').forEach(item => {
+    item.addEventListener('click', () => {
+      const path = item.dataset.path;
+      if (opened.has(path)) return;
+
+      opened.add(path);
+      item.classList.add('opened');
+
+      playSound('whisper');
+      setTimeout(() => playSound('noise'), 500);
+      setTimeout(() => playSound('click'), 800);
+
+      itemTextEl.textContent = itemTexts[path];
+      itemTextEl.classList.add('visible');
+
+      // Если открыла 3+ предмета — появляется фигура в углу
+      if (opened.size >= 3) {
+        cornerFigure.classList.add('appear');
+        playSound('noise');
+      }
+
+      if (opened.size >= 1 && !continueBtn.classList.contains('visible')) {
+        setTimeout(() => {
+          continueBtn.classList.add('visible');
+        }, 1500);
+      }
+    });
+  });
+
+  // ============ ПЕРЕХОД ============
+  continueBtn.addEventListener('click', () => {
+    playSound('noise');
+    document.body.style.transition = 'opacity 1.5s';
+    document.body.style.opacity = '0';
+    setTimeout(() => {
+      const path = [...opened][0] || 'unknown';
+      window.location.href = `shag2.html?path=${path}`;
+    }, 1500);
+  });
+
+  // ============ СТАРТ ============
+  window.addEventListener('load', () => {
+    setTimeout(typeNext, 1200);
+    resetIdle();
+  });
+</script>
+</body>
+</html>
