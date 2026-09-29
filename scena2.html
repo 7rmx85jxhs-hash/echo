@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>эхо — лес</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    background: #000; color: #c8cce0;
+    min-height: 100vh; overflow: hidden;
+    font-family: 'Georgia', 'Times New Roman', serif;
+    user-select: none;
+  }
+
+  /* ФОН — фото леса */
+  .bg-photo {
+    position: fixed; inset: 0;
+    background-image: url('scena2.jpg');
+    background-size: cover;
+    background-position: center;
+    z-index: 0;
+    animation: bgZoom 30s ease-in-out infinite alternate;
+    filter: brightness(0.85) contrast(1.1);
+  }
+  @keyframes bgZoom {
+    0% { transform: scale(1); }
+    100% { transform: scale(1.08); }
+  }
+
+  /* Лёгкое дрожание фото */
+  .bg-photo::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0.15);
+    animation: photoFlicker 0.2s infinite;
+  }
+  @keyframes photoFlicker {
+    0% { opacity: 0.7; }
+    50% { opacity: 0.85; }
+    100% { opacity: 0.7; }
+  }
+
+  /* Затемнение поверх — для читаемости текста */
+  .bg-overlay {
+    position: fixed; inset: 0;
+    z-index: 1;
+    background: radial-gradient(ellipse at center,
+      rgba(0,0,0,0.3) 0%,
+      rgba(0,0,0,0.6) 60%,
+      rgba(0,0,0,0.95) 100%);
+  }
+
+  /* Виньетка */
+  .vignette {
+    position: fixed; inset: 0; z-index: 2; pointer-events: none;
+    background: radial-gradient(ellipse at center,
+      transparent 25%, rgba(0,0,0,0.7) 70%, rgba(0,0,0,0.98) 100%);
+  }
+
+  /* Шум плёнки */
+  .film-noise {
+    position: fixed; inset: 0; z-index: 3; pointer-events: none;
+    background-image: repeating-linear-gradient(0deg,
+      rgba(255,255,255,0.02) 0px,
+      rgba(255,255,255,0.02) 1px,
+      transparent 1px, transparent 3px);
+    opacity: 0.4;
+    animation: noiseMove 0.08s steps(2) infinite;
+  }
+  @keyframes noiseMove {
+    0% { transform: translate(0,0); }
+    50% { transform: translate(1px,1px); }
+    100% { transform: translate(0,0); }
+  }
+
+  /* Мерцание */
+  .flicker {
+    position: fixed; inset: 0; z-index: 4; pointer-events: none;
+    background: rgba(255,255,255,0.01);
+    animation: flickAnim 0.15s infinite;
+  }
+  @keyframes flickAnim {
+    0% { opacity: 0.4; } 50% { opacity: 0.7; } 100% { opacity: 0.5; }
+  }
+
+  /* Частицы */
+  .particle {
+    position: fixed; width: 2px; height: 2px;
+    background: rgba(180,190,220,0.5); border-radius: 50%;
+    pointer-events: none; z-index: 5;
+    animation: particleFloat linear infinite;
+  }
+  @keyframes particleFloat {
+    0% { transform: translateY(0); opacity: 0; }
+    10% { opacity: 0.6; } 90% { opacity: 0.6; }
+    100% { transform: translateY(-100vh); opacity: 0; }
+  }
+
+  /* Проблеск силуэта */
+  .shadow-flash {
+    position: fixed; z-index: 6; width: 80px; height: 180px;
+    background: radial-gradient(ellipse at center bottom,
+      rgba(0,0,0,1) 0%, rgba(0,0,0,0.6) 50%, transparent 85%);
+    border-radius: 50% 50% 20% 20%;
+    filter: blur(6px); opacity: 0; pointer-events: none;
+  }
+  .shadow-flash.flash { animation: shadowFlash 0.6s forwards; }
+  @keyframes shadowFlash {
+    0% { opacity: 0; } 30% { opacity: 0.85; } 100% { opacity: 0; }
+  }
+
+  /* СЦЕНА */
+  .stage {
+    position: relative; z-index: 10;
+    min-height: 100vh;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: flex-end;
+    padding: 60px 25px 100px;
+    text-align: center;
+  }
+
+  /* Текст внизу, как субтитры */
+  #text {
+    max-width: 700px; width: 100%;
+    font-size: 22px;
+    line-height: 1.7;
+    letter-spacing: 2px;
+    font-weight: 300;
+    color: #d0d4e8;
+    text-shadow:
+      0 0 15px rgba(0,0,0,0.9),
+      0 0 30px rgba(0,0,0,0.8),
+      0 0 50px rgba(0,0,0,0.6);
+    white-space: pre-wrap;
+    margin-bottom: 40px;
+    min-height: 130px;
+  }
+
+  .cursor {
+    display: inline-block;
+    width: 2px; height: 22px;
+    background: #d0d4e8;
+    box-shadow: 0 0 12px rgba(200,210,240,0.9);
+    animation: cursorPulse 1s infinite;
+    vertical-align: middle;
+    margin-left: 3px;
+  }
+  @keyframes cursorPulse {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0; }
+  }
+
+  /* Кнопка */
+  #next-btn {
+    display: none;
+    background: rgba(0,0,0,0.4);
+    border: 1px solid rgba(180,190,220,0.5);
+    color: #c8cce0;
+    font-family: 'Georgia', serif;
+    font-size: 15px;
+    letter-spacing: 7px;
+    padding: 16px 45px;
+    cursor: pointer;
+    transition: all 0.6s;
+    opacity: 0;
+    text-shadow: 0 0 12px rgba(140,160,220,0.4);
+    backdrop-filter: blur(4px);
+  }
+  #next-btn.visible {
+    display: block;
+    animation: btnAppear 2s forwards;
+  }
+  @keyframes btnAppear { to { opacity: 1; } }
+  #next-btn:hover {
+    border-color: #d0d4e8;
+    color: #fff;
+    box-shadow: 0 0 40px rgba(140,160,220,0.6);
+    letter-spacing: 10px;
+    background: rgba(30,30,50,0.5);
+  }
+
+  .white-flash {
+    position: fixed; inset: 0;
+    background: #fff;
+    z-index: 999;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .white-flash.active { animation: whiteFlash 0.9s forwards; }
+  @keyframes whiteFlash {
+    0% { opacity: 0; }
+    30% { opacity: 0.9; }
+    100% { opacity: 0; }
+  }
+
+  #sound-btn {
+    position: fixed;
+    bottom: 20px; right: 20px;
+    background: rgba(0,0,0,0.4);
+    border: 1px solid rgba(140,150,190,0.3);
+    color: rgba(180,190,220,0.6);
+    font-family: 'Georgia', serif;
+    font-size: 10px;
+    letter-spacing: 3px;
+    padding: 8px 14px;
+    cursor: pointer;
+    transition: all 0.3s;
+    z-index: 20;
+    backdrop-filter: blur(4px);
+  }
+  #sound-btn.on {
+    border-color: rgba(140,190,140,0.5);
+    color: rgba(140,190,140,0.9);
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-photo"></div>
+<div class="bg-overlay"></div>
+<div class="vignette"></div>
+<div class="film-noise"></div>
+<div class="flicker"></div>
+
+<div class="stage">
+  <div id="text"></div>
+  <button id="next-btn">ИДТИ</button>
+</div>
+
+<button id="sound-btn">ЗВУК ВКЛ</button>
+<div class="white-flash" id="whiteFlash"></div>
+
+<script>
+  // ============ ЗВУКИ ============
+  const SOUNDS = {
+    hum: 'hum1.mp3',
+    wind: 'wind.mp3',
+    footsteps: 'footsteps.mp3',
+    breath: 'breath.mp3',
+    door_creak: 'door_creak.mp3',
+    click: 'click1.mp3',
+    whisper: 'whisper1.mp3'
+  };
+
+  const audio = {};
+  Object.keys(SOUNDS).forEach(k => { audio[k] = new Audio(SOUNDS[k]); });
+  audio.hum.loop = true; audio.hum.volume = 0.1;
+  audio.wind.loop = true; audio.wind.volume = 0.15;
+  audio.footsteps.volume = 0.3;
+  audio.breath.volume = 0.4;
+  audio.door_creak.volume = 0.3;
+  audio.click.volume = 0.15;
+  audio.whisper.volume = 0.4;
+
+  let soundOn = false;
+  const soundBtn = document.getElementById('sound-btn');
+
+  soundBtn.addEventListener('click', () => {
+    soundOn = !soundOn;
+    if (soundOn) {
+      audio.hum.play().catch(()=>{});
+      audio.wind.play().catch(()=>{});
+      soundBtn.textContent = 'ЗВУК ВЫКЛ';
+      soundBtn.classList.add('on');
+    } else {
+      audio.hum.pause();
+      audio.wind.pause();
+      soundBtn.textContent = 'ЗВУК ВКЛ';
+      soundBtn.classList.remove('on');
+    }
+  });
+
+  function play(name) {
+    if (!soundOn || !audio[name]) return;
+    audio[name].currentTime = 0;
+    audio[name].play().catch(()=>{});
+  }
+
+  // ============ ЧАСТИЦЫ ============
+  function spawnParticle() {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.left = Math.random() * 100 + '%';
+    p.style.bottom = '-10px';
+    p.style.animationDuration = (12 + Math.random() * 14) + 's';
+    p.style.opacity = 0.2 + Math.random() * 0.5;
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 26000);
+  }
+  setInterval(spawnParticle, 600);
+
+  // ============ СИЛУЭТ ============
+  function flashSilhouette() {
+    const s = document.createElement('div');
+    s.className = 'shadow-flash';
+    s.style.left = (5 + Math.random() * 85) + '%';
+    s.style.top = (15 + Math.random() * 55) + '%';
+    document.body.appendChild(s);
+    requestAnimationFrame(() => s.classList.add('flash'));
+    setTimeout(() => s.remove(), 700);
+  }
+
+  function scheduleFlash() {
+    const delay = 10000 + Math.random() * 12000;
+    setTimeout(() => {
+      flashSilhouette();
+      if (Math.random() < 0.6) play('whisper');
+      scheduleFlash();
+    }, delay);
+  }
+
+  function scheduleAmbient() {
+    const delay = 8000 + Math.random() * 10000;
+    setTimeout(() => {
+      play(Math.random() < 0.6 ? 'breath' : 'door_creak');
+      scheduleAmbient();
+    }, delay);
+  }
+
+  // ============ ТЕКСТ ============
+  const lines = [
+    { text: "Ты открываешь глаза.", pause: 2200 },
+    { text: "\n\n", pause: 1200 },
+    { text: "Не помнишь, как оказалась здесь.", pause: 2500 },
+    { text: "\n\n", pause: 1400 },
+    { text: "Лес. Ночь. Туман.", pause: 2200 },
+    { text: "\n\n", pause: 1400 },
+    { text: "Холодно.", pause: 1800 },
+    { text: "\n\n", pause: 1200 },
+    { text: "И где-то там —", pause: 1500 },
+    { text: "\n", pause: 600 },
+    { text: "кто-то есть.", pause: 2800 }
+  ];
+
+  const textEl = document.getElementById('text');
+  const nextBtn = document.getElementById('next-btn');
+  const whiteFlash = document.getElementById('whiteFlash');
+  const cursor = document.createElement('span');
+  cursor.className = 'cursor';
+
+  let lineIdx = 0;
+  let charIdx = 0;
+
+  function typeNext() {
+    if (lineIdx >= lines.length) {
+      cursor.remove();
+      setTimeout(() => {
+        nextBtn.classList.add('visible');
+        play('footsteps');
+      }, 1500);
+      return;
+    }
+
+    const line = lines[lineIdx];
+
+    if (charIdx < line.text.length) {
+      const ch = line.text[charIdx];
+      textEl.textContent += ch;
+      charIdx++;
+      textEl.appendChild(cursor);
+
+      if (ch !== ' ' && ch !== '\n' && Math.random() < 0.7) {
+        play('click');
+      }
+
+      let speed = 70;
+      if (ch === '.' || ch === '?' || ch === '!') speed = 500;
+      if (ch === ',') speed = 250;
+
+      setTimeout(typeNext, speed);
+    } else {
+      lineIdx++;
+      charIdx = 0;
+      setTimeout(typeNext, line.pause);
+    }
+  }
+
+  nextBtn.addEventListener('click', () => {
+    play('footsteps');
+    whiteFlash.classList.add('active');
+    setTimeout(() => {
+      window.location.href = 'scena3.html';
+    }, 900);
+  });
+
+  window.addEventListener('load', () => {
+    setTimeout(typeNext, 2000);
+    setTimeout(scheduleFlash, 6000);
+    setTimeout(scheduleAmbient, 8000);
+  });
+</script>
+</body>
+</html>
